@@ -1,60 +1,47 @@
 "use client";
 
-import { useState } from "react";
-
-type HealthStatus = "idle" | "loading" | "ok" | "error";
+import { useQuery } from "@tanstack/react-query";
+import { getUsers } from "@/services/user";
 
 export default function Home() {
-  const [status, setStatus] = useState<HealthStatus>("idle");
+	const usersQuery = useQuery({
+		queryKey: ["users"],
+		queryFn: () => getUsers({}),
+	});
 
-  async function checkApi() {
-    setStatus("loading");
+	if (usersQuery.isPending) {
+		return <main>Loading...</main>;
+	}
 
-    try {
-      const response = await fetch("/api/health");
+	if (usersQuery.isError) {
+		return <main>Failed to load users</main>;
+	}
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+	return (
+		<main>
+			<h1>Users</h1>
 
-      const data: unknown = await response.json();
+			<table>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Email</th>
+						<th>Status</th>
+						<th>Registered</th>
+					</tr>
+				</thead>
 
-      if (
-        typeof data !== "object" ||
-        data === null ||
-        !("status" in data) ||
-        data.status !== "ok"
-      ) {
-        throw new Error("Unexpected API response");
-      }
-
-      setStatus("ok");
-    } catch {
-      setStatus("error");
-    }
-  }
-
-  return (
-    <main className="shell">
-      <section className="card">
-        <p className="eyebrow">LIVE CODING</p>
-        <h1>Starter project is ready.</h1>
-        <p className="description">
-          Replace this page with the interview task. The health endpoint exists only to verify that UI and API both work.
-        </p>
-
-        <div className="actions">
-          <button type="button" onClick={checkApi} disabled={status === "loading"}>
-            {status === "loading" ? "Checking…" : "Check API"}
-          </button>
-          <span className={`status status-${status}`} aria-live="polite">
-            {status === "idle" && "Not checked"}
-            {status === "loading" && "Request in progress"}
-            {status === "ok" && "API OK"}
-            {status === "error" && "API error"}
-          </span>
-        </div>
-      </section>
-    </main>
-  );
+				<tbody>
+					{usersQuery.data.items.map((user) => (
+						<tr key={user.id}>
+							<td>{user.name}</td>
+							<td>{user.email}</td>
+							<td>{user.status}</td>
+							<td>{user.registeredAt}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</main>
+	);
 }
